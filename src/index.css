@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Project custom styles (kept from index.html) */
+.bg-xp-bliss {
+  background: linear-gradient(to bottom, #3d8af2 0%, #55a4f2 45%, #65d465 55%, #2aa12a 100%);
+}
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes progress-xp {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -40px 0;
+  }
+}
+.xp-input {
+  border: 1px solid #7f9db9;
+  background-color: white;
+}
+.xp-input:disabled {
+  background-color: #f0f0f0;
+}
+.xp-input:focus {
+  outline: none;
+  border: 1px solid #e7c58f;
+  box-shadow: 0 0 0 1px #e79b00;
+}

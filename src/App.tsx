@@ -23,23 +23,38 @@ export default function App() {
 
   // safeFetch: wraps fetch and returns parsed JSON or null on error
   const safeFetch = async (url: string, options?: RequestInit) => {
-    // Helper to try fetch and return json or null
+    // Helper returns an object describing the outcome so we can decide whether to retry.
     const tryFetch = async (u: string) => {
       try {
         const res = await fetch(u, options);
         if (!res.ok) {
-          console.warn(`Fetch failed: ${u} (status ${res.status})`);
-          return null;
+          // Return status so caller can decide whether to retry (only retry on 5xx).
+          return { data: null as any, status: res.status, networkError: false };
         }
-        return await res.json();
+        const json = await res.json();
+        return { data: json, status: res.status, networkError: false };
       } catch (err) {
-        return null;
+        // Network-level failure (DNS, CORS, connection dropped, etc.)
+        return { data: null as any, status: null, networkError: true };
       }
     };
 
     // First attempt: requested URL
     const first = await tryFetch(url);
-    if (first) return first;
+    if (first.data) return first.data;
+
+    // If we received a client error (4xx), do not attempt fallbacks — it's a terminal error.
+    if (!first.networkError && first.status && first.status >= 400 && first.status < 500) {
+      console.warn(`Fetch returned ${first.status} for ${url}; not retrying.`);
+      return null;
+    }
+
+    // Only retry on network errors or 5xx server errors.
+    const shouldRetry = first.networkError || (first.status !== null && first.status >= 500);
+    if (!shouldRetry) {
+      console.warn(`Fetch failed for ${url} (status ${first.status}); not retrying.`);
+      return null;
+    }
 
     // If first failed and the URL points at the canonical production host, try falling back to the local proxy path '/api'
     try {
@@ -48,7 +63,16 @@ export default function App() {
         const fallback = url.replace(prodHost, '/api');
         console.warn(`Primary fetch failed for ${url}, attempting fallback ${fallback}`);
         const second = await tryFetch(fallback);
-        if (second) return second;
+        if (second.data) return second.data;
+
+        if (!second.networkError && second.status && second.status >= 400 && second.status < 500) {
+          console.warn(`Fallback returned ${second.status} for ${fallback}; not retrying further.`);
+          return null;
+        }
+        // allow next fallback if network error or 5xx
+        if (!(second.networkError || (second.status !== null && second.status >= 500))) {
+          return null;
+        }
       }
     } catch (e) {
       // ignore
@@ -61,15 +85,19 @@ export default function App() {
       if (relative !== url) {
         console.warn(`Retrying using relative path: ${relative}`);
         const third = await tryFetch(relative);
-        if (third) return third;
+        if (third.data) return third.data;
+        if (!third.networkError && third.status && third.status >= 400 && third.status < 500) {
+          console.warn(
+            `Relative path returned ${third.status} for ${relative}; not retrying further.`
+          );
+          return null;
+        }
       }
     } catch (e) {
       // ignore
     }
 
-    // Still failed
-    const fallbackMsg = `Network error fetching ${url}: request failed (all retries)`;
-    console.warn(fallbackMsg);
+    console.warn(`Network error fetching ${url}: request failed (all retries)`);
     return null;
   };
 

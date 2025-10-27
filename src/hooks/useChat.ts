@@ -288,6 +288,18 @@ export function useChat() {
     setUsername: (u: string) => dispatch({ type: 'SET_USERNAME', payload: u }),
     createUser,
     sendMessage,
+    // Attempt to retry connecting to the server / restoring session
+    retryConnection: async () => {
+      dispatch({ type: 'SET_ERROR', payload: '' });
+      dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'Retrying connection...' });
+      try {
+        await initializeApp();
+      } catch (e) {
+        dispatch({ type: 'SET_ERROR', payload: (e as any)?.message || 'Retry failed' });
+      } finally {
+        dispatch({ type: 'SET_CONNECTION_STATUS', payload: '' });
+      }
+    },
     setMessageInput: (m: string) => dispatch({ type: 'SET_MESSAGE_INPUT', payload: m }),
     nextChat: () => {
       if (userId) startMatchmaking(userId);

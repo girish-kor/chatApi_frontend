@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useChat } from './hooks/useChat';
 
-import { WelcomeScreen } from './components/screens/WelcomeScreen';
-import { UsernameScreen } from './components/screens/UsernameScreen';
-import { SearchingScreen } from './components/screens/SearchingScreen';
 import { ChatScreen } from './components/screens/ChatScreen';
+import { SearchingScreen } from './components/screens/SearchingScreen';
+import { UsernameScreen } from './components/screens/UsernameScreen';
+import { WelcomeScreen } from './components/screens/WelcomeScreen';
 
-import { XpWindow } from './components/ui/XpWindow';
-import { XpTaskbar } from './components/ui/XpTaskbar';
 import { UserIcon } from './components/icons';
+import { XpTaskbar } from './components/ui/XpTaskbar';
+import { XpWindow } from './components/ui/XpWindow';
 
 export default function App() {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -99,17 +99,25 @@ export default function App() {
                 : 'bg-gradient-to-b from-yellow-200 to-yellow-300 text-black border-yellow-500'
             }`}
           >
-            {error ? `⚠️ ${error}` : `⏳ ${connectionStatus}`}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 truncate">
+                {error ? `⚠️ ${error}` : `⏳ ${connectionStatus}`}
+              </div>
+              {error && (
+                <button
+                  onClick={() => (actions as any).retryConnection?.()}
+                  className="ml-3 px-2 py-1 text-xs rounded bg-white text-black border"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
           </div>
         )}
         {renderScreen()}
       </XpWindow>
 
-      <XpTaskbar
-        appName="ChatXP"
-        isHidden={isHidden}
-        onShow={() => setIsHidden(false)}
-      />
+      <XpTaskbar appName="ChatXP" isHidden={isHidden} onShow={() => setIsHidden(false)} />
     </div>
   );
 }

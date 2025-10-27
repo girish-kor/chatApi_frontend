@@ -214,22 +214,31 @@ export function useChat() {
     dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'Restoring session...' });
     try {
       const user = await apiFetch('/api/auth/me', { headers: { 'X-User-Id': storedUserId } });
-      if (user) {
-        if (user.username) dispatch({ type: 'SET_USERNAME', payload: user.username });
-        dispatch({ type: 'USER_CREATED', payload: { userId: user.id } });
-        // If matched already, jump into chat
-        if (user.matchStatus === 'MATCHED' && user.roomId) {
-          dispatch({
-            type: 'START_MATCHMAKING',
-            payload: { roomId: user.roomId, userId: user.id },
-          });
-          dispatch({ type: 'SET_SCREEN', payload: 'chat' });
-          await fetchRoom(user.roomId, user.id);
-          startPolling(user.roomId, user.id);
-        } else {
-          // Show username screen so user can re-join
-          dispatch({ type: 'SET_SCREEN', payload: 'username' });
-        }
+
+      // The API may return just { username: 'anonymous' } when the server doesn't
+      // recognize the provided X-User-Id. Only treat the response as a restored
+      // session when we get a valid user `id` back from the server.
+      if (!user || !user.id) {
+        // Not a valid session on the server side — remove local state and
+        // prompt the user to enter a username to start a fresh session.
+        localStorage.removeItem('userId');
+        dispatch({ type: 'SET_SCREEN', payload: 'username' });
+        return;
+      }
+
+      // Valid user returned: restore user info and resume session if matched
+      if (user.username) dispatch({ type: 'SET_USERNAME', payload: user.username });
+      dispatch({ type: 'USER_CREATED', payload: { userId: user.id } });
+
+      if (user.matchStatus === 'MATCHED' && user.roomId) {
+        // Restore into an in-progress chat
+        dispatch({ type: 'START_MATCHMAKING', payload: { roomId: user.roomId, userId: user.id } });
+        dispatch({ type: 'SET_SCREEN', payload: 'chat' });
+        await fetchRoom(user.roomId, user.id);
+        startPolling(user.roomId, user.id);
+      } else {
+        // Not matched yet — let the user continue by re-entering username flow
+        dispatch({ type: 'SET_SCREEN', payload: 'username' });
       }
     } catch (err) {
       localStorage.removeItem('userId');

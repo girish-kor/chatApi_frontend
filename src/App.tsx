@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 export default function App() {
-  // Use local proxy in development (Vite) to avoid CORS; use real host in production
-  const API_BASE = import.meta.env.DEV ? '/api' : 'https://chatapi.miniproject.in/api';
+  // Use VITE_API_BASE if provided, otherwise use local proxy in development (Vite) or the real host in production
+  // This makes it explicit and allows overriding in environments where import.meta.env.DEV may not be set.
+  const API_BASE =
+    (import.meta.env as any).VITE_API_BASE ??
+    (import.meta.env.DEV ? '/api' : 'https://chatapi.miniproject.in/api');
   const [screen, setScreen] = useState('welcome');
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState('');
@@ -20,18 +23,54 @@ export default function App() {
 
   // safeFetch: wraps fetch and returns parsed JSON or null on error
   const safeFetch = async (url: string, options?: RequestInit) => {
-    try {
-      const res = await fetch(url, options);
-      if (!res.ok) {
-        console.warn(`Fetch failed: ${url} (status ${res.status})`);
+    // Helper to try fetch and return json or null
+    const tryFetch = async (u: string) => {
+      try {
+        const res = await fetch(u, options);
+        if (!res.ok) {
+          console.warn(`Fetch failed: ${u} (status ${res.status})`);
+          return null;
+        }
+        return await res.json();
+      } catch (err) {
         return null;
       }
-      return await res.json();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`Network error fetching ${url}: ${msg}`);
-      return null;
+    };
+
+    // First attempt: requested URL
+    const first = await tryFetch(url);
+    if (first) return first;
+
+    // If first failed and the URL points at the canonical production host, try falling back to the local proxy path '/api'
+    try {
+      const prodHost = 'https://chatapi.miniproject.in/api';
+      if (typeof url === 'string' && url.startsWith(prodHost)) {
+        const fallback = url.replace(prodHost, '/api');
+        console.warn(`Primary fetch failed for ${url}, attempting fallback ${fallback}`);
+        const second = await tryFetch(fallback);
+        if (second) return second;
+      }
+    } catch (e) {
+      // ignore
     }
+
+    // As a last-ditch attempt, if the URL is absolute but on the same origin path, try using the pathname only
+    try {
+      const parsed = new URL(url, window.location.href);
+      const relative = parsed.pathname + parsed.search;
+      if (relative !== url) {
+        console.warn(`Retrying using relative path: ${relative}`);
+        const third = await tryFetch(relative);
+        if (third) return third;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Still failed
+    const fallbackMsg = `Network error fetching ${url}: request failed (all retries)`;
+    console.warn(fallbackMsg);
+    return null;
   };
 
   useEffect(() => {
@@ -59,7 +98,7 @@ export default function App() {
   }, []);
 
   const checkUserStatus = async (uid: string) => {
-  const data = await safeFetch(`${API_BASE}/auth/me`, {
+    const data = await safeFetch(`${API_BASE}/auth/me`, {
       headers: { 'X-User-Id': uid },
     });
 
@@ -91,7 +130,7 @@ export default function App() {
     if (!inputUsername.trim()) {
       return;
     }
-  const data = await safeFetch(`${API_BASE}/users`, {
+    const data = await safeFetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: inputUsername.trim() }),
@@ -111,7 +150,7 @@ export default function App() {
   };
 
   const startMatchmaking = async (uid: string) => {
-  const res = await safeFetch(`${API_BASE}/matchmaking/join`, {
+    const res = await safeFetch(`${API_BASE}/matchmaking/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: uid }),
@@ -129,7 +168,7 @@ export default function App() {
     if (pollingInterval.current) clearInterval(pollingInterval.current);
 
     pollingInterval.current = setInterval(async () => {
-  const data = await safeFetch(`${API_BASE}/matchmaking/status/${uid}`);
+      const data = await safeFetch(`${API_BASE}/matchmaking/status/${uid}`);
       if (!data) return; // keep polling until server reachable
 
       if (data.status === 'MATCHED' && data.roomId) {
@@ -143,7 +182,7 @@ export default function App() {
   };
 
   const loadChatRoom = async (room: string, uid: string) => {
-  const data = await safeFetch(`${API_BASE}/chat/${room}`);
+    const data = await safeFetch(`${API_BASE}/chat/${room}`);
     if (!data) {
       setConnectionStatus('Disconnected');
       return;
@@ -152,7 +191,7 @@ export default function App() {
     if (data.participantIds && data.participantIds.length > 0) {
       const partnerId = data.participantIds.find((id: string) => id !== uid);
       if (partnerId) {
-  const partnerData = await safeFetch(`${API_BASE}/auth/me`, {
+        const partnerData = await safeFetch(`${API_BASE}/auth/me`, {
           headers: { 'X-User-Id': partnerId },
         });
         setPartnerName((partnerData && partnerData.username) || 'Stranger');
@@ -167,7 +206,7 @@ export default function App() {
     if (chatPollingInterval.current) clearInterval(chatPollingInterval.current);
 
     chatPollingInterval.current = setInterval(async () => {
-  const data = await safeFetch(`${API_BASE}/chat/${room}`);
+      const data = await safeFetch(`${API_BASE}/chat/${room}`);
       if (!data) return;
       setMessages(data.messages || []);
     }, 1500);
@@ -176,7 +215,7 @@ export default function App() {
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !roomId || !userId) return;
 
-  const res = await safeFetch(`${API_BASE}/chat/${roomId}/send`, {
+    const res = await safeFetch(`${API_BASE}/chat/${roomId}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -1,0 +1,5 @@
+{
+  "name": "ChatApi-frontend",
+  "description": "An anonymous chat application with a retro Windows XP-inspired user interface, allowing users to connect and chat with random strangers from around the world.",
+  "requestFramePermissions": []
+}

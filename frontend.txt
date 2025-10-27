@@ -1,0 +1,80 @@
+
+
+GET https://chatapi.miniproject.in/api/auth/me
+- Headers:
+  - X-User-Id: string (optional)
+- Request body: none
+- Responses:
+  - 200 OK (user found):
+    {
+      "id": "user-...",
+      "username": "...",
+      "matchStatus": "WAITING" | "MATCHED",
+      "roomId": "room-..." | null
+    }
+  - 200 OK (no header or user not found):
+    { "username": "anonymous" }
+
+POST https://chatapi.miniproject.in/api/users
+- Request body (application/json):
+  { "username": "string" }
+- Responses:
+  - 200 OK:
+    {
+      "id": "user-...",
+      "username": "...",
+      "matchStatus": "WAITING",
+      "roomId": null
+    }
+  - 400 Bad Request: empty body
+
+POST https://chatapi.miniproject.in/api/matchmaking/join
+- Request body (application/json):
+  { "userId": "string" }
+- Responses:
+  - 200 OK:
+    { "status": "User added to matchmaking queue" }
+  - 400 Bad Request:
+    { "error": "userId is required" }
+
+GET https://chatapi.miniproject.in/api/matchmaking/status/{userId}
+- Path param: userId (string)
+- Responses:
+  - 200 OK (user found):
+    {
+      "status": "WAITING" | "MATCHED",
+      "roomId": "room-..." | null
+    }
+  - 404 Not Found: no user with given id
+
+POST https://chatapi.miniproject.in/api/chat/{roomId}/send
+- Path param: roomId (string)
+- Request body (application/json):
+  { "senderId": "string", "content": "string" }
+- Responses:
+  - 200 OK:
+    { "roomId": "room-..." }
+  - 400 Bad Request: missing senderId or content
+
+GET https://chatapi.miniproject.in/api/chat/{roomId}
+- Path param: roomId (string)
+- Responses:
+  - 200 OK (room exists):
+    {
+      "id": "room-...",
+      "participantIds": ["user-...", "user-..."],
+      "messages": [
+        { "senderId": "user-...", "content": "...", "timestamp": "2025-10-27T...Z" },
+        ...
+      ]
+    }
+  - 200 OK (room not found):
+    { "id": "{roomId}", "participantIds": [], "messages": [] }
+
+Model notes (JSON shapes):
+- User:
+  { "id": "user-...", "username": "...", "matchStatus": "WAITING" | "MATCHED", "roomId": "room-..." | null }
+- ChatRoom:
+  { "id": "room-...", "participantIds": ["user-..."], "messages": [ChatMessage, ...] }
+- ChatMessage:
+  { "senderId": "user-...", "content": "...", "timestamp": "ISO-8601 string" }

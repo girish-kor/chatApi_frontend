@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatXP - Anonymous Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            backgroundImage: {
+              'radial-gradient-bl': 'radial-gradient(circle at 0% 100%, var(--tw-gradient-stops))',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      .bg-xp-bliss {
+          background: linear-gradient(to bottom, #3D8AF2 0%, #55A4F2 45%, #65D465 55%, #2AA12A 100%);
+      }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes progress-xp {
+        0% { background-position: 0 0; }
+        100% { background-position: -40px 0; }
+      }
+      .xp-input {
+        border: 1px solid #7F9DB9;
+        background-color: white;
+      }
+      .xp-input:disabled {
+        background-color: #F0F0F0;
+      }
+      .xp-input:focus {
+        outline: none;
+        border: 1px solid #E7C58F;
+        box-shadow: 0 0 0 1px #E79B00;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/src/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>
